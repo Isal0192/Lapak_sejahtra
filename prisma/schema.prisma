@@ -1,0 +1,97 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Owner {
+  id        String   @id @default(cuid())
+  nama      String
+  nomer_tlp String
+  alamat    String
+  email     String
+  password  String   @default("password123")
+  isPaid    Boolean  @default(false)
+  role      String   @default("OWNER")
+  tenants   Tenant[]
+}
+
+model Tenant {
+  id             String               @id @default(cuid())
+  id_owner       String
+  nama_warung    String
+  alamat_warung  String
+  qr_code_warung String?
+  status         String               @default("PENDING") // PENDING, ACTIVE
+  is_open        Boolean              @default(true)
+  jadwal_buka    String               @default("Senin - Minggu, 08:00 - 20:00")
+  owner          Owner                @relation(fields: [id_owner], references: [id])
+  penjuals       Penjual[]
+  produks        ProdukTitipan[]
+  transaksis     TransaksiPenitipan[]
+}
+
+model Penjual {
+  id         String               @id @default(cuid())
+  id_tenant  String
+  nama       String
+  nomer_tlp  String
+  password   String               @default("kasir123")
+  status     String               @default("Aktif") // Aktif / Nonaktif
+  role       String               @default("PENJUAL")
+  tenant     Tenant               @relation(fields: [id_tenant], references: [id])
+  transaksis TransaksiPenitipan[]
+}
+
+model Penitip {
+  id         String               @id @default(cuid())
+  nama       String
+  nomer_tlp  String               @unique
+  password   String               @default("penitip123")
+  alamat     String
+  role       String               @default("PENITIP")
+  produks    ProdukTitipan[]
+  transaksis TransaksiPenitipan[]
+}
+
+model ProdukTitipan {
+  id              String   @id @default(cuid())
+  id_tenant       String
+  id_penitip      String
+  nama_produk     String
+  harga_titip     Int
+  harga_jual      Int
+  status_approval String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  
+  tenant          Tenant   @relation(fields: [id_tenant], references: [id])
+  penitip         Penitip  @relation(fields: [id_penitip], references: [id])
+  items           Item[]
+}
+
+model TransaksiPenitipan {
+  id               String   @id @default(cuid())
+  id_tenant        String
+  id_penitip       String
+  id_penjual       String?
+  status_transaksi String   @default("Titip") // Titip, Selesai, Dibatalkan
+  tanggal          DateTime @default(now())
+
+  tenant  Tenant   @relation(fields: [id_tenant], references: [id])
+  penitip Penitip  @relation(fields: [id_penitip], references: [id])
+  penjual Penjual? @relation(fields: [id_penjual], references: [id])
+  items   Item[]
+}
+
+model Item {
+  id           String             @id @default(cuid())
+  id_transaksi String
+  id_produk    String
+  jumlah_awal  Int
+  jumlah_sisa  Int                @default(0)
+  
+  transaksi    TransaksiPenitipan @relation(fields: [id_transaksi], references: [id])
+  produk       ProdukTitipan      @relation(fields: [id_produk], references: [id])
+}
